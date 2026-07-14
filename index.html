@@ -252,6 +252,13 @@
         <input type="text" id="cmd" autocomplete="off" aria-describedby="instructions">
         <button onclick="processCommand()">Execute</button>
         <button onclick="toggleAudio()" id="audio-btn">Toggle Audio Cue</button>
+        <button id="ds-ai-toggle" onclick="toggleAI()">AI: Off</button>
+        <select onchange="setAIDepth(this.value)" title="AI difficulty (search depth)" aria-label="AI difficulty">
+            <option value="2">Easy</option>
+            <option value="3" selected>Medium</option>
+            <option value="4">Hard</option>
+        </select>
+        <button onclick="window.Duet.spectator.start({depth: 3})">Spectator Mode</button>
         <p id="instructions" class="sr-only">Type a coordinate move like e2e4, or a single square like e4 to query. Press Enter to execute.</p>
     </div>
 
@@ -497,6 +504,7 @@
     let selectedSquare = null;
 
     function handleSquareClick(sq) {
+        if (isAIControlled(GameState.turn)) return;
         const cmdInput = document.getElementById('cmd');
         if (!selectedSquare) {
             selectedSquare = sq;
@@ -563,6 +571,7 @@
 
         announce("New game started. White to move.");
         renderVisualBoard(createSnapshot());
+        maybeTriggerAI();
     }
 
     // ==========================================================================
@@ -582,6 +591,10 @@
     function processCommand() {
         if (GameState.gameOver) {
             announce("Game over. Refresh page to restart.");
+            return;
+        }
+        if (isAIControlled(GameState.turn)) {
+            announce("It's the AI's turn.");
             return;
         }
         let cmd = document.getElementById('cmd').value.toLowerCase().trim();
@@ -643,6 +656,7 @@
         const snapshot = createSnapshot();
         renderVisualBoard(snapshot);
         updateAudio(snapshot);
+        maybeTriggerAI();
     }
 
     // --- OnValidateIntent -------------------------------------------------
@@ -1056,6 +1070,427 @@
                 container.appendChild(div);
             }
         }
+    }
+
+    // ==========================================================================
+    // AGENT INTERFACE
+    // Same contract as the Duet: Solo build - window.Duet.* for an agent that
+    // can execute JS on the page. This full build has no separate #agent-state
+    // DOM snapshot (Solo added that for a read-only agent path); getState()
+    // covers the equivalent need here for an agent that can run script.
+    // ==========================================================================
+    window.Duet = {
+        getState() {
+            return createSnapshot();
+        },
+        move(from, to) {
+            return submitPlayerIntent({ type: 'MOVE', from, to });
+        },
+        query(square) {
+            const coords = parseSquare(square);
+            if (!coords) return { ok: false, reason: 'Invalid square.' };
+            const piece = GameState.board[coords.r][coords.c];
+            if (!piece) return { ok: true, square, piece: null };
+            return { ok: true, square, piece: { ...piece } };
+        },
+        reset() {
+            initGame();
+        },
+        ai: {
+            enable(color = 'b', depth = 3) { setAIOpponent(true, color, depth); },
+            disable(color) { setAIOpponent(false, color); },
+            isEnabled(color) { return !!AIConfig.controllers[color || 'b']; },
+            setDepth(d, color) { setAIDepth(d, color); },
+        },
+        spectator: {
+            start(opts = {}) { startSpectatorMode(opts); },
+            stop() { stopSpectatorMode(); },
+            isRunning() { return SpectatorConfig.enabled; },
+        },
+    };
+
+    // ==========================================================================
+    // AI OPPONENT
+    // --------------------------------------------------------------------------
+    // Search runs on cloned boards only - it never reads/writes GameState and
+    // never calls announce() mid-search. Once a move is chosen, it's played
+    // through submitPlayerIntent() - the exact same path a human uses - so the
+    // live game (and window.Duet.getState()) always reflects what actually
+    // happened, never a hypothetical.
+    // ==========================================================================
+    const AIConfig = {
+        controllers: { w: null, b: null }, // null = human, {depth} = AI-controlled
+        moveDelayMs: 300,
+        randomization: 0,
+    };
+
+    function isAIControlled(color) {
+        return !!AIConfig.controllers[color];
+    }
+
+    const PIECE_VALUES = { p: 100, n: 320, b: 330, r: 500, q: 900, rb: 950, d: 0 };
+    // Death is worth 0 materially - by rule it can never be captured, so it's
+    // never a capture target for the search to weigh. Its value is entirely
+    // positional (Sanctuary), handled in evaluateBoard below.
+
+    function cloneBoard(board) {
+        return board.map(row => row.map(cell => cell ? { ...cell } : null));
+    }
+
+    function isPathClearOnBoard(board, from, to) {
+        let dr = Math.sign(to.r - from.r);
+        let dc = Math.sign(to.c - from.c);
+        let r = from.r + dr;
+        let c = from.c + dc;
+        const moverColor = board[from.r][from.c].color;
+        while (r !== to.r || c !== to.c) {
+            const occ = board[r][c];
+            if (occ) {
+                if (occ.type === 'd' && occ.color === moverColor) {
+                    // friendly Death can be passed through, same as the live rule
+                } else {
+                    return false;
+                }
+            }
+            r += dr;
+            c += dc;
+        }
+        return true;
+    }
+
+    function isValidMoveOnBoard(board, piece, from, to) {
+        let dr = to.r - from.r;
+        let dc = to.c - from.c;
+        let adr = Math.abs(dr);
+        let adc = Math.abs(dc);
+        let target = board[to.r][to.c];
+
+        if (target && target.color === piece.color && target.type !== 'd') return false;
+        if (target && target.type === 'd') return false;
+
+        let type = piece.type;
+        if (type === 'p') {
+            let dir = piece.color === 'w' ? -1 : 1;
+            let startRow = piece.color === 'w' ? 6 : 1;
+            if (dc === 0 && dr === dir && !target) return true;
+            if (dc === 0 && dr === 2 * dir && from.r === startRow && !target && !board[from.r + dir][from.c]) return true;
+            if (adc === 1 && dr === dir && target) return true;
+            return false;
+        }
+        if (type === 'n') return (adr === 2 && adc === 1) || (adr === 1 && adc === 2);
+        if (type === 'b') {
+            if (adr !== adc || adr === 0) return false;
+            return isPathClearOnBoard(board, from, to);
+        }
+        if (type === 'r') {
+            if (dr !== 0 && dc !== 0) return false;
+            return isPathClearOnBoard(board, from, to);
+        }
+        if (type === 'q' || type === 'rb') {
+            if (dr === 0 || dc === 0 || adr === adc) return isPathClearOnBoard(board, from, to);
+            return false;
+        }
+        if (type === 'k' || type === 'd') return adr <= 1 && adc <= 1;
+        return false;
+    }
+
+    /** All legal moves for `color` on `board`, mirroring the live validate-intent
+     *  rules (Veiled restriction, Death-cannot-be-captured) with no side effects. */
+    function generateLegalMoves(board, color) {
+        const moves = [];
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = board[r][c];
+                if (!piece || piece.color !== color) continue;
+                const from = { r, c };
+                for (let tr = 0; tr < 8; tr++) {
+                    for (let tc = 0; tc < 8; tc++) {
+                        if (tr === r && tc === c) continue;
+                        const to = { r: tr, c: tc };
+                        const target = board[tr][tc];
+                        if (target && target.type === 'd') continue;
+
+                        if (piece.veiled) {
+                            if (tc !== c) continue;
+                            const wantRow = piece.color === 'w' ? r - 1 : r + 1;
+                            if (tr !== wantRow) continue;
+                            if (target) continue;
+                        } else if (!isValidMoveOnBoard(board, piece, from, to)) {
+                            continue;
+                        }
+                        moves.push({ from, to });
+                    }
+                }
+            }
+        }
+        return moves;
+    }
+
+    function applyMoveOnBoard(board, move) {
+        const b = cloneBoard(board);
+        const { from, to } = move;
+        const piece = b[from.r][from.c];
+        b[to.r][to.c] = piece;
+        b[from.r][from.c] = null;
+        if (piece.type === 'p' && (to.r === 0 || to.r === 7)) piece.type = 'rb';
+        return b;
+    }
+
+    /** Mirrors RadiusOfRuinSystem.resolve + VeiledStateSystem.tickDown, but pure. */
+    function resolveSystemsOnBoard(board, activeColor) {
+        const enemyColor = activeColor === 'w' ? 'b' : 'w';
+        let myDeath = null;
+        let enemyRebirth = null;
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (!p) continue;
+                if (p.color === activeColor && p.type === 'd') myDeath = { r, c };
+                if (p.color === enemyColor && p.type === 'rb') enemyRebirth = { r, c };
+            }
+        }
+
+        const within1 = (r, c, anchor) => Math.abs(c - anchor.c) <= 1 && Math.abs(r - anchor.r) <= 1;
+
+        if (enemyRebirth) {
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const p = board[r][c];
+                    if (!p || p.color !== activeColor || p.type === 'rb') continue;
+                    const inRuin = within1(r, c, enemyRebirth) && !(r === enemyRebirth.r && c === enemyRebirth.c);
+                    const inSanctuary = myDeath ? within1(r, c, myDeath) : false;
+                    if (inRuin && !inSanctuary) {
+                        p.veiled = true;
+                        p.veiled_turns = VeiledStateSystem.DURATION_TURNS;
+                    }
+                }
+            }
+        }
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (p && p.color === activeColor && p.veiled) {
+                    p.veiled_turns--;
+                    if (p.veiled_turns <= 0) {
+                        p.veiled = false;
+                        delete p.veiled_turns;
+                    }
+                }
+            }
+        }
+        return board;
+    }
+
+    function makeSimMove(board, move, color) {
+        const applied = applyMoveOnBoard(board, move);
+        return resolveSystemsOnBoard(applied, color);
+    }
+
+    /** Heuristic evaluation of `board` from `forColor`'s perspective. */
+    function evaluateBoard(board, forColor) {
+        let score = 0;
+        let myDeath = null;
+        let myRebirth = null;
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (!p) continue;
+                const sign = p.color === forColor ? 1 : -1;
+                const value = PIECE_VALUES[p.type] || 0;
+                score += sign * value;
+
+                if (p.veiled) score += sign * -40;
+
+                const centerDist = Math.abs(3.5 - r) + Math.abs(3.5 - c);
+                score += sign * (7 - centerDist) * 1.5;
+
+                if (p.type === 'd' && p.color === forColor) myDeath = { r, c };
+                if (p.type === 'rb' && p.color === forColor) myRebirth = { r, c };
+            }
+        }
+
+        if (myRebirth && myDeath) {
+            const dist = Math.max(Math.abs(myRebirth.r - myDeath.r), Math.abs(myRebirth.c - myDeath.c));
+            score += Math.max(0, 5 - dist) * 6;
+        }
+
+        return score;
+    }
+
+    /** Minimax with alpha-beta pruning. Returns { score, move }. */
+    function minimax(board, depth, alpha, beta, currentColor, aiColor) {
+        const moves = generateLegalMoves(board, currentColor);
+
+        if (depth === 0 || moves.length === 0) {
+            if (moves.length === 0) {
+                const sign = currentColor === aiColor ? -1 : 1;
+                return { score: sign * (50000 + depth) };
+            }
+            return { score: evaluateBoard(board, aiColor) };
+        }
+
+        const maximizing = currentColor === aiColor;
+        let bestMove = null;
+        let bestScore = maximizing ? -Infinity : Infinity;
+
+        for (const move of moves) {
+            const nextBoard = makeSimMove(board, move, currentColor);
+            const nextColor = currentColor === 'w' ? 'b' : 'w';
+            const { score } = minimax(nextBoard, depth - 1, alpha, beta, nextColor, aiColor);
+
+            if (maximizing) {
+                if (score > bestScore) { bestScore = score; bestMove = move; }
+                alpha = Math.max(alpha, bestScore);
+            } else {
+                if (score < bestScore) { bestScore = score; bestMove = move; }
+                beta = Math.min(beta, bestScore);
+            }
+            if (beta <= alpha) break;
+        }
+
+        return { score: bestScore, move: bestMove };
+    }
+
+    /** Picks a move for `color` at `depth`. With AIConfig.randomization > 0,
+     *  picks randomly among moves within a small margin of the top score -
+     *  used by spectator mode so repeat games don't play out identically. */
+    function chooseMove(board, depth, color) {
+        const moves = generateLegalMoves(board, color);
+        if (moves.length === 0) return null;
+
+        const scored = moves.map(move => {
+            const nextBoard = makeSimMove(board, move, color);
+            const nextColor = color === 'w' ? 'b' : 'w';
+            const { score } = minimax(nextBoard, depth - 1, -Infinity, Infinity, nextColor, color);
+            return { move, score };
+        });
+        scored.sort((a, b) => b.score - a.score);
+
+        if (AIConfig.randomization <= 0) return scored[0].move;
+
+        const best = scored[0].score;
+        const margin = Math.abs(best) * AIConfig.randomization + 15;
+        const candidates = scored.filter(s => Math.abs(s.score - best) <= margin);
+        return candidates[Math.floor(Math.random() * candidates.length)].move;
+    }
+
+    function setAIOpponent(enabled, color = 'b', depth = 3) {
+        AIConfig.controllers[color] = enabled ? { depth: Math.max(1, depth) } : null;
+        const btn = document.getElementById('ds-ai-toggle');
+        if (btn) btn.innerText = enabled ? 'AI: On' : 'AI: Off';
+        announce(enabled
+            ? `AI opponent enabled, playing ${color === 'w' ? 'White' : 'Black'} at depth ${AIConfig.controllers[color].depth}.`
+            : `AI opponent disabled for ${color === 'w' ? 'White' : 'Black'}.`);
+        maybeTriggerAI();
+    }
+
+    function toggleAI() {
+        const color = 'b';
+        setAIOpponent(!isAIControlled(color), color, AIConfig.controllers[color]?.depth || 3);
+    }
+
+    function setAIDepth(d, color = 'b') {
+        if (AIConfig.controllers[color]) {
+            AIConfig.controllers[color].depth = Math.max(1, parseInt(d, 10) || 3);
+        }
+    }
+
+    function maybeTriggerAI() {
+        if (GameState.gameOver) return;
+        if (!isAIControlled(GameState.turn)) return;
+
+        if (SpectatorConfig.enabled && GameState.turnNumber > SpectatorConfig.maxPlies) {
+            announce(`Spectator game hit the ${SpectatorConfig.maxPlies}-ply cap - starting a new game.`);
+            setTimeout(initGame, SpectatorConfig.moveDelayMs);
+            return;
+        }
+        setTimeout(runAITurn, AIConfig.moveDelayMs);
+    }
+
+    function runAITurn() {
+        if (GameState.gameOver) return;
+        const color = GameState.turn;
+        if (!isAIControlled(color)) return;
+
+        const depth = AIConfig.controllers[color].depth;
+        announce(`${color === 'w' ? 'White' : 'Black'} AI is thinking...`);
+        const board = cloneBoard(GameState.board);
+        const move = chooseMove(board, depth, color);
+
+        if (!move) {
+            announce(`${color === 'w' ? 'White' : 'Black'} AI has no legal moves.`);
+            if (SpectatorConfig.enabled) {
+                setTimeout(initGame, SpectatorConfig.moveDelayMs);
+            }
+            return;
+        }
+        const fromStr = squareName(move.from.r, move.from.c);
+        const toStr = squareName(move.to.r, move.to.c);
+        submitPlayerIntent({ type: 'MOVE', from: fromStr, to: toStr });
+    }
+
+    // ==========================================================================
+    // SPECTATOR MODE (agent vs agent)
+    // Both colors become AI-controlled, moves are paced with a visible delay,
+    // and games auto-restart at a ply cap (this engine has no formal end-state
+    // yet, so "the game is over" isn't something it can detect on its own) or
+    // when a side runs out of legal moves.
+    // ==========================================================================
+    const SpectatorConfig = {
+        enabled: false,
+        maxPlies: 120,
+        moveDelayMs: 1200,
+        randomization: 0.08,
+    };
+
+    let _preSpectatorState = null;
+
+    function startSpectatorMode(opts = {}) {
+        const depthW = opts.depthW || opts.depth || 3;
+        const depthB = opts.depthB || opts.depth || 3;
+        const moveDelayMs = opts.moveDelayMs || SpectatorConfig.moveDelayMs;
+        const randomization = opts.randomization ?? SpectatorConfig.randomization;
+        const maxPlies = opts.maxPlies || SpectatorConfig.maxPlies;
+
+        _preSpectatorState = {
+            controllers: { w: AIConfig.controllers.w, b: AIConfig.controllers.b },
+            moveDelayMs: AIConfig.moveDelayMs,
+            randomization: AIConfig.randomization,
+        };
+
+        AIConfig.controllers.w = { depth: depthW };
+        AIConfig.controllers.b = { depth: depthB };
+        AIConfig.moveDelayMs = moveDelayMs;
+        AIConfig.randomization = randomization;
+
+        SpectatorConfig.enabled = true;
+        SpectatorConfig.maxPlies = maxPlies;
+        SpectatorConfig.moveDelayMs = moveDelayMs;
+
+        const btn = document.getElementById('ds-ai-toggle');
+        if (btn) btn.innerText = 'Spectator: On';
+        announce(`Spectator mode: White (depth ${depthW}) vs Black (depth ${depthB}).`);
+        initGame();
+    }
+
+    function stopSpectatorMode() {
+        SpectatorConfig.enabled = false;
+        if (_preSpectatorState) {
+            AIConfig.controllers.w = _preSpectatorState.controllers.w;
+            AIConfig.controllers.b = _preSpectatorState.controllers.b;
+            AIConfig.moveDelayMs = _preSpectatorState.moveDelayMs;
+            AIConfig.randomization = _preSpectatorState.randomization;
+            _preSpectatorState = null;
+        } else {
+            AIConfig.controllers.w = null;
+            AIConfig.controllers.b = null;
+        }
+        const btn = document.getElementById('ds-ai-toggle');
+        if (btn) btn.innerText = 'AI: Off';
+        announce('Spectator mode stopped.');
     }
 
     // Allow Enter key to trigger command
