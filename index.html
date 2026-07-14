@@ -151,15 +151,30 @@
             white-space: nowrap;
             border: 0;
         }
-        .controls { margin-bottom: 20px; }
-        input, button {
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 10px;
+        }
+        input, button, select {
             font-size: 16px;
             padding: 5px;
             background: var(--surface-concrete);
             color: var(--text-primary);
             border: 1px solid var(--surface-concrete);
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
         }
-        button:hover { border-color: var(--accent-crimson); }
+        button, select { cursor: pointer; }
+        button:hover, select:hover { border-color: var(--accent-crimson); }
         #legend {
             font-family: 'Roboto Mono', monospace;
             font-size: 13px;
@@ -248,17 +263,21 @@
     <div id="visual-board" aria-hidden="true"></div>
 
     <div class="controls">
-        <label for="cmd">Command (e.g., e2e4 or e4 to query):</label>
-        <input type="text" id="cmd" autocomplete="off" aria-describedby="instructions">
-        <button onclick="processCommand()">Execute</button>
-        <button onclick="toggleAudio()" id="audio-btn">Toggle Audio Cue</button>
-        <button id="ds-ai-toggle" onclick="toggleAI()">AI: Off</button>
-        <select onchange="setAIDepth(this.value)" title="AI difficulty (search depth)" aria-label="AI difficulty">
-            <option value="2">Easy</option>
-            <option value="3" selected>Medium</option>
-            <option value="4">Hard</option>
-        </select>
-        <button onclick="window.Duet.spectator.start({depth: 3})">Spectator Mode</button>
+        <div class="controls-row">
+            <label for="cmd">Command (e.g., e2e4 or e4 to query):</label>
+            <input type="text" id="cmd" autocomplete="off" aria-describedby="instructions">
+            <button onclick="processCommand()">Execute</button>
+        </div>
+        <div class="controls-row">
+            <button onclick="toggleAudio()" id="audio-btn">Toggle Audio Cue</button>
+            <button id="ds-ai-toggle" onclick="toggleAI()">AI: Off</button>
+            <select onchange="setAIDepth(this.value)" title="AI difficulty (search depth)" aria-label="AI difficulty">
+                <option value="2">Easy</option>
+                <option value="3" selected>Medium</option>
+                <option value="4">Hard</option>
+            </select>
+            <button id="spectator-toggle" onclick="toggleSpectator()">Spectate</button>
+        </div>
         <p id="instructions" class="sr-only">Type a coordinate move like e2e4, or a single square like e4 to query. Press Enter to execute.</p>
     </div>
 
@@ -1105,6 +1124,7 @@
         spectator: {
             start(opts = {}) { startSpectatorMode(opts); },
             stop() { stopSpectatorMode(); },
+            toggle() { toggleSpectator(); },
             isRunning() { return SpectatorConfig.enabled; },
         },
     };
@@ -1470,8 +1490,8 @@
         SpectatorConfig.maxPlies = maxPlies;
         SpectatorConfig.moveDelayMs = moveDelayMs;
 
-        const btn = document.getElementById('ds-ai-toggle');
-        if (btn) btn.innerText = 'Spectator: On';
+        const specBtn = document.getElementById('spectator-toggle');
+        if (specBtn) specBtn.innerText = 'Stop Spectating';
         announce(`Spectator mode: White (depth ${depthW}) vs Black (depth ${depthB}).`);
         initGame();
     }
@@ -1488,9 +1508,18 @@
             AIConfig.controllers.w = null;
             AIConfig.controllers.b = null;
         }
-        const btn = document.getElementById('ds-ai-toggle');
-        if (btn) btn.innerText = 'AI: Off';
+        const specBtn = document.getElementById('spectator-toggle');
+        if (specBtn) specBtn.innerText = 'Spectate';
         announce('Spectator mode stopped.');
+    }
+
+    /** Wired to the single Spectator button - starts if idle, stops if running. */
+    function toggleSpectator() {
+        if (SpectatorConfig.enabled) {
+            stopSpectatorMode();
+        } else {
+            startSpectatorMode({ depth: 3 });
+        }
     }
 
     // Allow Enter key to trigger command
