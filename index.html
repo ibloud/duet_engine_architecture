@@ -12,12 +12,85 @@
             --accent-gold: #D4AF37;       /* locked / protected states */
             --text-primary: #F5F5F7;      /* stark industrial white */
         }
+        * { box-sizing: border-box; }
         body {
             font-family: system-ui, -apple-system, sans-serif;
             background: var(--bg-base);
             color: var(--text-primary);
-            margin: 20px;
+            margin: 0;
         }
+        /* Page shell - keeps line lengths readable and centers the whole
+           experience instead of hugging the browser's left edge. */
+        .page {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 32px 20px 48px;
+        }
+
+        /* ==========================================================================
+           HERO / LANDING HEADER
+           Purely additive framing above the existing game - no game markup or
+           logic below this point is touched. Gives first-time visitors (jam
+           participants, junior devs) a 10-second orientation before the
+           command input, instead of dropping them straight into a raw input box.
+           ========================================================================== */
+        .hero {
+            padding-bottom: 20px;
+            margin-bottom: 28px;
+            border-bottom: 1px solid rgba(245, 245, 247, 0.12);
+        }
+        .hero-eyebrow {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent-gold);
+            margin: 0 0 10px 0;
+        }
+        .hero h1 {
+            font-size: 32px;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.01em;
+        }
+        .hero p.tagline {
+            font-size: 15px;
+            line-height: 1.55;
+            opacity: 0.85;
+            max-width: 60ch;
+            margin: 0 0 16px 0;
+        }
+        .hero-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 18px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+        }
+        .hero-nav a {
+            color: var(--text-primary);
+            opacity: 0.75;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+        }
+        .hero-nav a:hover {
+            opacity: 1;
+            border-bottom-color: var(--accent-crimson);
+        }
+        .quickstart {
+            background: var(--surface-concrete);
+            border-left: 2px solid var(--accent-gold);
+            padding: 10px 14px;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-top: 16px;
+        }
+        .quickstart kbd {
+            background: var(--bg-base);
+            border: 1px solid rgba(245, 245, 247, 0.25);
+            padding: 1px 6px;
+            font-family: 'Roboto Mono', monospace;
+        }
+
         /* Visual representation for sighted devs/testers. Fully hidden from screen readers. */
         #visual-board {
             display: grid;
@@ -27,6 +100,7 @@
             background: var(--surface-concrete);
             border: 2px solid var(--surface-concrete);
             width: fit-content;
+            max-width: 100%;
             margin-bottom: 20px;
         }
         .sq {
@@ -34,6 +108,15 @@
             align-items: center;
             justify-content: center;
             font-size: 24px;
+        }
+        /* Small screens: shrink the board so 8 columns still fit without
+           horizontal scrolling (8 * 34px + gaps ≈ fits a 360px viewport). */
+        @media (max-width: 400px) {
+            #visual-board {
+                grid-template-columns: repeat(8, 34px);
+                grid-template-rows: repeat(8, 34px);
+            }
+            .sq { font-size: 20px; }
         }
         /* Two brand darks, not wood tones - board stays in the monochromatic family */
         .sq.light { background: var(--surface-concrete); color: var(--text-primary); }
@@ -139,8 +222,23 @@
     </style>
 </head>
 <body>
+<div class="page">
 
-    <h1>Veiled Dominion: Duet</h1>
+    <header class="hero">
+        <p class="hero-eyebrow">Veiled Dominion · Duet</p>
+        <h1>Duet</h1>
+        <p class="tagline">A standalone, accessibility-first browser demo of Rebirth &amp; Death's Radius of Ruin
+        mechanic — one piece of a bigger 4-player asymmetric chess variant. Built screen-reader-first, playable
+        by anyone, and small enough to read the whole engine in one sitting.</p>
+        <nav class="hero-nav" aria-label="Project links">
+            <a href="https://github.com/ibloud/duet_engine_architecture">About this project ↗</a>
+            <a href="https://github.com/Loptr-Lab/veiled-dominion-engine">Veiled Dominion engine ↗</a>
+            <a href="https://loptrlab.com">Loptr Lab ↗</a>
+        </nav>
+        <p class="quickstart" aria-hidden="true">
+            👋 New here? Type <kbd>e2e4</kbd> in the box below and press Enter to make your first move.
+        </p>
+    </header>
 
     <!-- Screen Reader Live Region -->
     <!-- This handles the "Board-state layer" natively via the user's own assistive tech -->
@@ -968,5 +1066,11 @@
     // Start
     initGame();
 </script>
+
+    <footer style="margin-top: 36px; padding-top: 16px; border-top: 1px solid rgba(245,245,247,0.12); font-size: 13px; opacity: 0.6;">
+        <a href="https://github.com/ibloud/duet_engine_architecture" style="color: var(--text-primary);">Source, license &amp; contributing ↗</a>
+    </footer>
+
+</div>
 </body>
 </html>
