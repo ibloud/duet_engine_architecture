@@ -469,49 +469,81 @@
     }
 
     async function fetchActorRpgStats(pdsUrl, did) {
+        // The rpg.actor standard is now per-system rkey: one actor.rpg.stats
+        // record per system (rkey = system key), shaped { system, data, ... }.
+        // The old single 'self' record (top-level keys ARE the system names)
+        // is deprecated but some actors may still only have that. Read every
+        // record in the collection and normalize both shapes into one list -
+        // don't just grab record #1 and assume its shape.
         const res = await fetch(
-            `${pdsUrl}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=actor.rpg.stats&limit=1`
+            `${pdsUrl}/xrpc/com.atproto.repo.listRecords?repo=${encodeURIComponent(did)}&collection=actor.rpg.stats&limit=100`
         );
         if (!res.ok) throw new Error('could not read records from PDS');
         const data = await res.json();
         if (!data.records || data.records.length === 0) return null;
-        return data.records[0].value;
+
+        const metaKeys = new Set(['$type', 'createdAt', 'updatedAt', 'system', 'data']);
+        const systems = [];
+
+        for (const rec of data.records) {
+            const value = rec.value || {};
+            if (typeof value.system === 'string' && 'data' in value) {
+                // Modern per-system rkey record.
+                systems.push({
+                    systemKey: value.system,
+                    fields: value.data || {},
+                    createdAt: value.createdAt,
+                });
+            } else {
+                // Legacy self record: every non-meta top-level key is a system.
+                for (const key of Object.keys(value)) {
+                    if (metaKeys.has(key)) continue;
+                    systems.push({
+                        systemKey: key,
+                        fields: value[key] || {},
+                        createdAt: value.createdAt,
+                    });
+                }
+            }
+        }
+        return systems.length > 0 ? systems : null;
     }
 
-    function renderRpgActorStats(record) {
+    function renderRpgActorStats(systems) {
         const statsEl = document.getElementById('rpgactor-stats');
         statsEl.innerHTML = '';
 
-        // Real record shape (confirmed against a live actor.rpg.stats record):
-        // { "$type": "actor.rpg.stats", "<systemName>": {...fields...}, "createdAt": "..." }
-        // A record can only contain systems the player has actually populated -
+        // `systems` is a normalized list of { systemKey, fields, createdAt },
+        // already flattened from whichever record shape(s) fetchActorRpgStats
+        // found - modern per-system rkey records, legacy self records, or a
+        // mix of both. A character can have more than one populated system -
         // e.g. a Reverie House character stores data under "reverie", a D&D
-        // character under "dnd", and a game with no dedicated schema (like
-        // Duet today) would store data under "custom". There is no single
-        // fixed key to assume - render whichever system(s) are present.
-        const metaKeys = new Set(['$type', 'createdAt']);
-        const systemKeys = Object.keys(record).filter(k => !metaKeys.has(k));
-
-        if (systemKeys.length === 0) {
+        // character under "dnd", and Veiled Dominion today under "custom"
+        // (until it registers its own system key). Render whichever are present.
+        if (!systems || systems.length === 0) {
             const p = document.createElement('p');
             p.textContent = 'This actor has a record, but no populated stat systems.';
             statsEl.appendChild(p);
             return;
         }
 
-        for (const systemKey of systemKeys) {
+        let latestCreatedAt = null;
+
+        for (const { systemKey, fields, createdAt } of systems) {
+            if (createdAt && (!latestCreatedAt || createdAt > latestCreatedAt)) {
+                latestCreatedAt = createdAt;
+            }
+
             const heading = document.createElement('h3');
-            heading.textContent = systemKey === 'custom'
+            heading.textContent = (systemKey === 'custom' || systemKey === 'veileddominion')
                 ? 'Veiled Dominion stats'
                 : `${systemKey} system`;
             statsEl.appendChild(heading);
 
-            if (systemKey === 'custom') {
-                const note = document.createElement('p');
-                note.textContent = 'No Veiled Dominion stats recorded yet for this actor.';
-                // custom system is only actually "empty" if it exists but has no keys;
-                // otherwise fall through to render its fields like any other system.
-                if (Object.keys(record[systemKey] || {}).length === 0) {
+            if (systemKey === 'custom' || systemKey === 'veileddominion') {
+                if (Object.keys(fields || {}).length === 0) {
+                    const note = document.createElement('p');
+                    note.textContent = 'No Veiled Dominion stats recorded yet for this actor.';
                     statsEl.appendChild(note);
                     continue;
                 }
@@ -524,8 +556,7 @@
             }
 
             const dl = document.createElement('dl');
-            const fields = record[systemKey] || {};
-            for (const [key, value] of Object.entries(fields)) {
+            for (const [key, value] of Object.entries(fields || {})) {
                 const dt = document.createElement('dt');
                 dt.textContent = key;
                 const dd = document.createElement('dd');
@@ -536,11 +567,11 @@
             statsEl.appendChild(dl);
         }
 
-        if (record.createdAt) {
+        if (latestCreatedAt) {
             const meta = document.createElement('p');
             meta.style.opacity = '0.6';
             meta.style.fontSize = '12px';
-            meta.textContent = `Record created ${record.createdAt}`;
+            meta.textContent = `Record created ${latestCreatedAt}`;
             statsEl.appendChild(meta);
         }
     }
