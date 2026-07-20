@@ -121,10 +121,21 @@
         /* Two brand darks, not wood tones - board stays in the monochromatic family */
         .sq.light { background: var(--surface-concrete); color: var(--text-primary); }
         .sq.dark { background: var(--bg-base); color: var(--text-primary); }
-        /* Radius of Ruin: crimson is reserved for active-threat states in the design system */
-        .sq.ruin { box-shadow: inset 0 0 0 4px rgba(158, 27, 27, 0.7); }
-        /* Sanctuary: gold reads as "locked/protected", not blue (blue is off-palette entirely) */
-        .sq.sanctuary { box-shadow: inset 0 0 0 4px rgba(212, 175, 55, 0.6); }
+        /* Radius of Ruin: crimson is reserved for active-threat states in the design system.
+           Dashed inner outline gives it a shape identity too, not just color, so it still
+           reads for colorblind or grayscale viewing. */
+        .sq.ruin {
+            box-shadow: inset 0 0 0 4px rgba(158, 27, 27, 0.7);
+            outline: 2px dashed rgba(158, 27, 27, 0.9);
+            outline-offset: -8px;
+        }
+        /* Sanctuary: gold reads as "locked/protected", not blue (blue is off-palette entirely).
+           Dotted inner outline distinguishes it from Ruin's dashed pattern by shape alone. */
+        .sq.sanctuary {
+            box-shadow: inset 0 0 0 4px rgba(212, 175, 55, 0.6);
+            outline: 2px dotted rgba(212, 175, 55, 0.9);
+            outline-offset: -8px;
+        }
         /* Veiled: 45-degree diagonal hatch, per the design system's Veil State Pattern -
            a flat gray fill was a placeholder, not the spec */
         .sq.veiled {
@@ -203,6 +214,19 @@
             overflow-y: auto;
             font-family: 'Roboto Mono', monospace; /* Data/Logs typeface per the doc's typography hierarchy */
         }
+        /* Accessible counterpart to #log: a real, focusable, navigable list (not
+           aria-hidden) so screen reader users can review move history item by item,
+           the same way sighted users can scroll the visual log. */
+        .history-log {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 0;
+            padding-left: 1.4em;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .history-log li { margin: 2px 0; }
         .panel {
             background: var(--surface-concrete);
             border: 1px solid rgba(245, 245, 247, 0.15);
@@ -290,6 +314,15 @@
         <h3>Game Log (Visual History)</h3>
         <div id="log" aria-hidden="true"></div>
     </div>
+
+    <!-- Accessible move/event history: unlike #sr-status (which only speaks the latest
+         event once, live), this is a real, navigable list a screen reader user can move
+         through item by item to review past moves - not aria-hidden, no aria-live, so it
+         doesn't re-announce and doesn't duplicate #sr-status's job, just extends it. -->
+    <section class="panel" aria-labelledby="history-heading">
+        <h3 id="history-heading">Move &amp; Event History</h3>
+        <ol id="history-log" class="history-log"></ol>
+    </section>
 
     <!-- Lore panel - plain readable text, intentionally NOT aria-hidden since this content
          is meaningful to blind players too, unlike the visual board. Placed below the game
@@ -588,6 +621,9 @@
         GameState.gameOver = false;
         GameState.turnNumber = 1;
 
+        document.getElementById('log').innerText = '';
+        document.getElementById('history-log').innerHTML = '';
+
         announce("New game started. White to move.");
         renderVisualBoard(createSnapshot());
         maybeTriggerAI();
@@ -601,6 +637,12 @@
         document.getElementById('sr-status').innerText = msg;
         document.getElementById('log').innerText += msg + '\n';
         document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+
+        const historyLog = document.getElementById('history-log');
+        const item = document.createElement('li');
+        item.innerText = msg;
+        historyLog.appendChild(item);
+        historyLog.scrollTop = historyLog.scrollHeight;
     }
 
     // ==========================================================================
