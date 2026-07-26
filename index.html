@@ -6,17 +6,25 @@
     <title>Veiled Dominion: Duet</title>
     <style>
         :root {
-            --bg-base: #0D0C0E;           /* obsidian black */
-            --surface-concrete: #1A191C;  /* muted charcoal */
-            --accent-crimson: #9E1B1B;    /* active threat / block accents */
-            --accent-gold: #D4AF37;       /* locked / protected states */
-            --text-primary: #F5F5F7;      /* stark industrial white */
+            --bg-base: #050505;             /* black void */
+            --surface-concrete: #1a1a1a;    /* black obsidian */
+            --accent-crimson: #d4a853;      /* amber-light, reused for former "crimson" accent role */
+            --accent-gold: #d4a853;         /* amber-light, reused for former "gold" accent role */
+            --text-primary: #ffffff;        /* pure white */
+            --text-secondary: #e0e0e0;      /* grey-200, body copy */
+            --text-muted: #666666;
+            --border-hairline: #1a1a1a;
+            --amber-glow-08: rgba(212,168,83,0.08);
+            --amber-glow-10: rgba(212,168,83,0.10);
+            --amber-glow-30: rgba(212,168,83,0.3);
+            --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            --font-mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
         }
         * { box-sizing: border-box; }
         body {
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: var(--font-sans);
             background: var(--bg-base);
-            color: var(--text-primary);
+            color: var(--text-secondary);
             margin: 0;
         }
         /* Page shell - keeps line lengths readable and centers the whole
@@ -37,18 +45,21 @@
         .hero {
             padding-bottom: 20px;
             margin-bottom: 28px;
-            border-bottom: 1px solid rgba(245, 245, 247, 0.12);
+            border-bottom: 1px solid var(--border-hairline);
         }
         .hero-eyebrow {
-            font-family: 'Roboto Mono', monospace;
-            font-size: 12px;
+            font-family: var(--font-mono);
+            font-size: 12.8px;
             text-transform: uppercase;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.15em;
             color: var(--accent-gold);
-            margin: 0 0 10px 0;
+            margin: 0 0 8px 0;
         }
         .hero h1 {
             font-size: 32px;
+            font-weight: 300;
+            color: var(--text-primary);
+            text-shadow: 0 0 20px var(--amber-glow-30);
             margin: 0 0 10px 0;
             letter-spacing: -0.01em;
         }
@@ -63,7 +74,7 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px 18px;
-            font-family: 'Roboto Mono', monospace;
+            font-family: var(--font-mono);
             font-size: 13px;
         }
         .hero-nav a {
@@ -88,7 +99,7 @@
             background: var(--bg-base);
             border: 1px solid rgba(245, 245, 247, 0.25);
             padding: 1px 6px;
-            font-family: 'Roboto Mono', monospace;
+            font-family: var(--font-mono);
         }
 
         /* Visual representation for sighted devs/testers. Fully hidden from screen readers. */
@@ -187,7 +198,7 @@
         button, select { cursor: pointer; }
         button:hover, select:hover { border-color: var(--accent-crimson); }
         #legend {
-            font-family: 'Roboto Mono', monospace;
+            font-family: var(--font-mono);
             font-size: 13px;
             color: var(--text-primary);
             opacity: 0.85;
@@ -212,7 +223,7 @@
             border-radius: 0; /* doc rejects rounded/soft treatments in favor of flat structural edges */
             max-height: 200px;
             overflow-y: auto;
-            font-family: 'Roboto Mono', monospace; /* Data/Logs typeface per the doc's typography hierarchy */
+            font-family: var(--font-mono); /* Data/Logs typeface per the doc's typography hierarchy */
         }
         /* Accessible counterpart to #log: a real, focusable, navigable list (not
            aria-hidden) so screen reader users can review move history item by item,
@@ -222,7 +233,7 @@
             overflow-y: auto;
             margin: 0;
             padding-left: 1.4em;
-            font-family: 'Roboto Mono', monospace;
+            font-family: var(--font-mono);
             font-size: 13px;
             line-height: 1.5;
         }
@@ -251,7 +262,7 @@
         }
         .panel p { font-size: 14px; line-height: 1.5; margin: 4px 0; }
         #rpgactor-status {
-            font-family: 'Roboto Mono', monospace;
+            font-family: var(--font-mono);
             font-size: 13px;
             margin-top: 8px;
         }
@@ -291,6 +302,7 @@
             <label for="cmd">Command (e.g., e2e4 or e4 to query):</label>
             <input type="text" id="cmd" autocomplete="off" aria-describedby="instructions">
             <button onclick="processCommand()">Execute</button>
+            <button type="button" id="speak-btn" onclick="SpeechInput.toggle()" aria-pressed="false" aria-describedby="speech-instructions">🎤 Speak Move</button>
         </div>
         <div class="controls-row">
             <button onclick="toggleAudio()" id="audio-btn">Toggle Audio Cue</button>
@@ -303,11 +315,13 @@
             <button id="spectator-toggle" onclick="toggleSpectator()">Spectate</button>
         </div>
         <p id="instructions" class="sr-only">Type a coordinate move like e2e4, or a single square like e4 to query. Press Enter to execute.</p>
+        <p id="speech-instructions" class="sr-only">Speech input fills the command box with what it heard but never submits a move on its own. Review or edit the text, then press Enter or Execute to confirm.</p>
+        <p id="speech-status" class="sr-only" role="status" aria-live="polite"></p>
     </div>
 
     <p id="legend" aria-hidden="true">
         Move: <kbd>e2e4</kbd> &nbsp;·&nbsp; Look at a square: <kbd>e4</kbd> &nbsp;·&nbsp; Press Enter
-        &nbsp;·&nbsp; or click two squares on the board below
+        &nbsp;·&nbsp; or click two squares on the board below &nbsp;·&nbsp; or tap Speak Move
     </p>
 
     <div>
@@ -730,6 +744,49 @@
     // any one stage can be swapped/extended (e.g. a future variant hook)
     // without touching the others.
     // ==========================================================================
+    // --- Promotion & win-condition rules --------------------------------
+    // Tiered promotion: a pawn reaching the back rank does not automatically
+    // become Rebirth. Only one Rebirth per side is allowed (the birth event -
+    // the board is too small for two, and narratively there is only one
+    // daughter). After that, promotion refills lost Knights, then Bishops,
+    // up to the starting complement of 2 each. Once both are full, promotion
+    // is blocked entirely (null) - a deliberate "board overloaded" signal
+    // that the Rebirth may be ready to advance further, not a bug.
+    function countPieces(board, color, type) {
+        let n = 0;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (p && p.color === color && p.type === type) n++;
+            }
+        }
+        return n;
+    }
+
+    function getPromotionType(board, color) {
+        if (countPieces(board, color, 'rb') === 0) return 'rb';
+        if (countPieces(board, color, 'n') < 2) return 'n';
+        if (countPieces(board, color, 'b') < 2) return 'b';
+        return null;
+    }
+
+    // A side loses the instant its own Rebirth is Veiled - caught unprotected
+    // next to the enemy Rebirth, with no Sanctuary from its own Death nearby.
+    // Death is uncapturable and irrelevant to winning by design; this
+    // replaces any checkmate-style condition and inverts standard chess's
+    // "protect the strongest piece" logic.
+    function checkLossCondition(board) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = board[r][c];
+                if (p && p.type === 'rb' && p.veiled) {
+                    return { over: true, loser: p.color, winner: p.color === 'w' ? 'b' : 'w' };
+                }
+            }
+        }
+        return { over: false, loser: null, winner: null };
+    }
+
     function submitPlayerIntent(intent) {
         const validation = onValidateIntent(intent);
         if (!validation.valid) {
@@ -794,19 +851,24 @@
         GameState.board[from.r][from.c] = null;
 
         let promoted = false;
+        let promotedTo = null;
         if (piece.type === 'p' && (to.r === 0 || to.r === 7)) {
-            piece.type = 'rb';
-            promoted = true;
+            const promo = getPromotionType(GameState.board, piece.color);
+            if (promo) {
+                piece.type = promo;
+                promoted = true;
+                promotedTo = promo;
+            }
         }
 
-        return { ...validated, promoted };
+        return { ...validated, promoted, promotedTo };
     }
 
     // --- OnResolveCapture -----------------------------------------------------
     // Resolves capture/announcement text. (Duet has no graveyard/displacement
     // system yet - this stage is the hook where one would live.)
     function onResolveCapture(applied) {
-        const { piece, target, toStr, promoted } = applied;
+        const { piece, target, toStr, promoted, promotedTo } = applied;
         const moverName = GameState.turn === 'w' ? 'White' : 'Black';
 
         if (target) {
@@ -815,9 +877,21 @@
             announce(`${moverName} ${getPieceName(piece.type)} moves to ${toStr}.`);
         }
         if (promoted) {
-            announce(`Pawn promoted to Rebirth on ${toStr}.`);
+            announce(promotedTo === 'rb'
+                ? `Pawn promoted to Rebirth on ${toStr}.`
+                : `Pawn promoted to ${getPieceName(promotedTo)} on ${toStr}.`);
+        } else if (piece.type === 'p' && (validatedReachedBackRank(applied))) {
+            announce(`${toStr} can't take a promotion right now - both Knight and Bishop complements are full. Rebirth may be ready to advance.`);
         }
         return applied;
+    }
+
+    // A pawn that reached the back rank but got no promotion (board
+    // overloaded - both Knight and Bishop complements already full) is
+    // still worth telling the player about explicitly.
+    function validatedReachedBackRank(applied) {
+        const { to, piece } = applied;
+        return piece.type === 'p' && (to.r === 0 || to.r === 7);
     }
 
     // --- OnResolveSystems -----------------------------------------------------
@@ -830,12 +904,19 @@
     }
 
     // --- OnCheckEndState --------------------------------------------------
-    // Evaluate victory/loss conditions. Duet is full-information standard
-    // chess + Rebirth/Death/Veiling with no win-condition variants yet, so
-    // this is currently a no-op hook, kept explicit rather than omitted so
-    // future rules (e.g. Rebirth Leadership Points) have a clear seam.
+    // Evaluate victory/loss conditions. The game ends the instant a side's
+    // own Rebirth becomes Veiled - caught unprotected next to the enemy
+    // Rebirth - not when Death is threatened or captured (Death is
+    // uncapturable and structurally irrelevant to winning, by design).
     function onCheckEndState() {
-        // no-op for Duet's current scope
+        if (GameState.gameOver) return;
+        const result = checkLossCondition(GameState.board);
+        if (result.over) {
+            GameState.gameOver = true;
+            const loserName = result.loser === 'w' ? 'White' : 'Black';
+            const winnerName = result.winner === 'w' ? 'White' : 'Black';
+            announce(`${loserName}'s Rebirth has lost control. ${winnerName} wins.`);
+        }
     }
 
     function advanceTurn() {
@@ -870,7 +951,7 @@
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
                     const p = GameState.board[r][c];
-                    if (!p || p.color !== activeColor || p.type === 'rb') continue;
+                    if (!p || p.color !== activeColor) continue;
 
                     const inRuin = this._within1(r, c, enemyRebirth) && !(r === enemyRebirth.r && c === enemyRebirth.c);
                     const inSanctuary = myDeath ? this._within1(r, c, myDeath) : false;
@@ -1325,7 +1406,10 @@
         const piece = b[from.r][from.c];
         b[to.r][to.c] = piece;
         b[from.r][from.c] = null;
-        if (piece.type === 'p' && (to.r === 0 || to.r === 7)) piece.type = 'rb';
+        if (piece.type === 'p' && (to.r === 0 || to.r === 7)) {
+            const promo = getPromotionType(b, piece.color);
+            if (promo) piece.type = promo;
+        }
         return b;
     }
 
@@ -1350,7 +1434,7 @@
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
                     const p = board[r][c];
-                    if (!p || p.color !== activeColor || p.type === 'rb') continue;
+                    if (!p || p.color !== activeColor) continue;
                     const inRuin = within1(r, c, enemyRebirth) && !(r === enemyRebirth.r && c === enemyRebirth.c);
                     const inSanctuary = myDeath ? within1(r, c, myDeath) : false;
                     if (inRuin && !inSanctuary) {
@@ -1602,6 +1686,155 @@
 
     // Start
     initGame();
+</script>
+
+<!-- ===================================================================
+     SPEECH INPUT - additive only. Uses the browser's native
+     SpeechRecognition (Web Speech API). This module never touches
+     GameState directly and never submits a move on its own: it only ever
+     writes into the existing #cmd input, the same box typing and clicking
+     already use, so a misheard word costs nothing more than an edit before
+     pressing Enter/Execute. Screen-reader narration for game events
+     continues to come from announce() -> #sr-status, unchanged.
+     =================================================================== -->
+<script>
+    const SpeechInput = {
+        recognition: null,
+        active: false,
+        supported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+
+        init() {
+            const btn = document.getElementById('speak-btn');
+            if (!this.supported) {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.title = 'Speech input is not supported in this browser.';
+                    btn.innerText = '🎤 Speak Move (unavailable)';
+                }
+                this._setStatus('Speech input is not supported in this browser. Typing and clicking still work as usual.');
+                return;
+            }
+
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            this.recognition = new SR();
+            // Single utterance per tap rather than always-listening - gives the
+            // player a clear start/stop boundary instead of an open mic picking up
+            // background noise indefinitely. interimResults lets us surface a
+            // live "hearing: ..." readout before the utterance is even final.
+            this.recognition.continuous = false;
+            this.recognition.interimResults = true;
+            this.recognition.maxAlternatives = 3;
+            this.recognition.lang = 'en-US';
+
+            this.recognition.onstart = () => {
+                this.active = true;
+                this._setButtonState(true);
+                this._setStatus('Listening. Say a move, like e2 e4, or a square to query.', true);
+            };
+
+            this.recognition.onresult = (event) => {
+                const result = event.results[event.results.length - 1];
+                const transcript = result[0].transcript.trim();
+                if (result.isFinal) {
+                    this._handleFinalTranscript(transcript);
+                } else {
+                    this._setStatus(`Hearing: ${transcript}`, true);
+                }
+            };
+
+            // No hard rejection on low confidence anywhere in this module --
+            // whatever comes back gets shown to the player to confirm or edit,
+            // rather than silently discarded. Errors here are about recognition
+            // failing to start/run at all (no speech detected, mic blocked,
+            // network hiccup for the browser's recognition service), not about
+            // judging whether the speech itself was "clear enough."
+            this.recognition.onerror = (event) => {
+                this.active = false;
+                this._setButtonState(false);
+                if (event.error === 'no-speech') {
+                    this._setStatus("Didn't catch anything that time. Tap Speak Move to try again -- no rush.");
+                } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    this._setStatus('Microphone access is blocked. Check your browser/site permissions, then tap Speak Move again.');
+                } else if (event.error === 'aborted') {
+                    this._setStatus('Listening stopped.');
+                } else {
+                    this._setStatus(`Speech recognition had a problem (${event.error}). Tap Speak Move to try again.`);
+                }
+            };
+
+            this.recognition.onend = () => {
+                this.active = false;
+                this._setButtonState(false);
+            };
+        },
+
+        toggle() {
+            if (!this.supported) return;
+            if (this.active) {
+                this.recognition.stop();
+                return;
+            }
+            try {
+                this.recognition.start();
+            } catch (err) {
+                this._setStatus('Could not start listening just then. Give it a second and try again.');
+            }
+        },
+
+        _setButtonState(listening) {
+            const btn = document.getElementById('speak-btn');
+            if (!btn) return;
+            btn.setAttribute('aria-pressed', listening ? 'true' : 'false');
+            btn.innerText = listening ? '🎤 Listening… (tap to stop)' : '🎤 Speak Move';
+        },
+
+        _handleFinalTranscript(rawText) {
+            const normalized = this._normalize(rawText);
+            const cmdInput = document.getElementById('cmd');
+            if (cmdInput) cmdInput.value = normalized;
+            this._setStatus(
+                `Heard: "${rawText}". Filled in as "${normalized || '(nothing usable)'}" in the command box. `
+                + `Press Enter or Execute to confirm, or edit it first.`
+            );
+        },
+
+        // Recognition tends to return spoken forms like "e two e four", "E2 to
+        // E4", or "e2 - e4" -- normalize the common patterns into the same
+        // coordinate notation the typed command bar already parses, without
+        // ever guessing past what was actually heard.
+        _normalize(text) {
+            let t = text.toLowerCase().trim();
+            t = t.replace(/\bto\b/g, ' ');
+            t = t
+                .replace(/\bzero\b/g, '0')
+                .replace(/\bone\b/g, '1')
+                .replace(/\btwo\b/g, '2')
+                .replace(/\bthree\b/g, '3')
+                .replace(/\bfour\b/g, '4')
+                .replace(/\bfive\b/g, '5')
+                .replace(/\bsix\b/g, '6')
+                .replace(/\bseven\b/g, '7')
+                .replace(/\beight\b/g, '8');
+            t = t.replace(/[\s\-]+/g, '');
+            return t;
+        },
+
+        // Interim ("hearing: ...") updates go to the visible/sr-only status line
+        // only, so they don't spam an assertive live region mid-utterance.
+        // Final results and errors also push to #sr-status, since those are
+        // exactly the kind of state change a screen-reader user needs announced
+        // the same way game moves already are.
+        _setStatus(msg, interimOnly) {
+            const statusEl = document.getElementById('speech-status');
+            if (statusEl) statusEl.innerText = msg;
+            if (!interimOnly) {
+                const srStatus = document.getElementById('sr-status');
+                if (srStatus) srStatus.innerText = msg;
+            }
+        },
+    };
+
+    SpeechInput.init();
 </script>
 
     <footer style="margin-top: 36px; padding-top: 16px; border-top: 1px solid rgba(245,245,247,0.12); font-size: 13px; opacity: 0.6;">
