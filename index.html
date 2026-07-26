@@ -6,25 +6,25 @@
     <title>Veiled Dominion: Duet</title>
     <style>
         :root {
-            --bg-base: #050505;             /* black void */
-            --surface-concrete: #1a1a1a;    /* black obsidian */
-            --accent-crimson: #d4a853;      /* amber-light, reused for former "crimson" accent role */
-            --accent-gold: #d4a853;         /* amber-light, reused for former "gold" accent role */
-            --text-primary: #ffffff;        /* pure white */
-            --text-secondary: #e0e0e0;      /* grey-200, body copy */
+            --black-void: #050505;
+            --black-obsidian: #1a1a1a;
+            --white-pure: #ffffff;
+            --grey-200: #e0e0e0;
             --text-muted: #666666;
-            --border-hairline: #1a1a1a;
+            --grey-700: #333333;
+            --amber-light: #d4a853;
             --amber-glow-08: rgba(212,168,83,0.08);
             --amber-glow-10: rgba(212,168,83,0.10);
             --amber-glow-30: rgba(212,168,83,0.3);
+            --border-hairline: #1a1a1a;
             --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             --font-mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
         }
         * { box-sizing: border-box; }
         body {
             font-family: var(--font-sans);
-            background: var(--bg-base);
-            color: var(--text-secondary);
+            background: var(--black-void);
+            color: var(--grey-200);
             margin: 0;
         }
         /* Page shell - keeps line lengths readable and centers the whole
@@ -52,13 +52,13 @@
             font-size: 12.8px;
             text-transform: uppercase;
             letter-spacing: 0.15em;
-            color: var(--accent-gold);
+            color: var(--amber-light);
             margin: 0 0 8px 0;
         }
         .hero h1 {
             font-size: 32px;
             font-weight: 300;
-            color: var(--text-primary);
+            color: var(--white-pure);
             text-shadow: 0 0 20px var(--amber-glow-30);
             margin: 0 0 10px 0;
             letter-spacing: -0.01em;
@@ -78,26 +78,26 @@
             font-size: 13px;
         }
         .hero-nav a {
-            color: var(--text-primary);
+            color: var(--white-pure);
             opacity: 0.75;
             text-decoration: none;
             border-bottom: 1px solid transparent;
         }
         .hero-nav a:hover {
             opacity: 1;
-            border-bottom-color: var(--accent-crimson);
+            border-bottom-color: var(--amber-light);
         }
         .quickstart {
-            background: var(--surface-concrete);
-            border-left: 2px solid var(--accent-gold);
+            background: var(--black-obsidian);
+            border-left: 2px solid var(--amber-light);
             padding: 10px 14px;
             font-size: 14px;
             line-height: 1.5;
             margin-top: 16px;
         }
         .quickstart kbd {
-            background: var(--bg-base);
-            border: 1px solid rgba(245, 245, 247, 0.25);
+            background: var(--black-void);
+            border: 1px solid var(--grey-700);
             padding: 1px 6px;
             font-family: var(--font-mono);
         }
@@ -108,8 +108,8 @@
             grid-template-columns: repeat(8, 40px);
             grid-template-rows: repeat(8, 40px);
             gap: 1px;
-            background: var(--surface-concrete);
-            border: 2px solid var(--surface-concrete);
+            background: var(--black-obsidian);
+            border: 2px solid var(--black-obsidian);
             width: fit-content;
             max-width: 100%;
             margin-bottom: 20px;
@@ -119,6 +119,7 @@
             align-items: center;
             justify-content: center;
             font-size: 24px;
+            position: relative;
         }
         /* Small screens: shrink the board so 8 columns still fit without
            horizontal scrolling (8 * 34px + gaps ≈ fits a 360px viewport). */
@@ -130,35 +131,45 @@
             .sq { font-size: 20px; }
         }
         /* Two brand darks, not wood tones - board stays in the monochromatic family */
-        .sq.light { background: var(--surface-concrete); color: var(--text-primary); }
-        .sq.dark { background: var(--bg-base); color: var(--text-primary); }
-        /* Radius of Ruin: crimson is reserved for active-threat states in the design system.
-           Dashed inner outline gives it a shape identity too, not just color, so it still
-           reads for colorblind or grayscale viewing. */
+        .sq.light { background: var(--black-obsidian); color: var(--white-pure); }
+        .sq.dark { background: var(--black-void); color: var(--white-pure); }
+        /* Radius of Ruin / Sanctuary: single-accent amber wash with a slow
+           breathing pulse, matching the design system's one-accent-color rule
+           (no separate red/gold indicator colors) and its Ruin/Sanctuary
+           breathing technique. Shape as well as color carries the meaning so
+           it still reads for colorblind or grayscale viewing. */
         .sq.ruin {
-            box-shadow: inset 0 0 0 4px rgba(158, 27, 27, 0.7);
-            outline: 2px dashed rgba(158, 27, 27, 0.9);
-            outline-offset: -8px;
+            background: var(--amber-glow-10);
+            animation: ruin-breathe var(--ruin-duration, 3.2s) ease-in-out infinite;
         }
-        /* Sanctuary: gold reads as "locked/protected", not blue (blue is off-palette entirely).
-           Dotted inner outline distinguishes it from Ruin's dashed pattern by shape alone. */
         .sq.sanctuary {
-            box-shadow: inset 0 0 0 4px rgba(212, 175, 55, 0.6);
-            outline: 2px dotted rgba(212, 175, 55, 0.9);
-            outline-offset: -8px;
+            background: rgba(102,102,102,0.10);
+            animation: sanctuary-breathe var(--sanctuary-duration, 4.5s) ease-in-out infinite;
+        }
+        @keyframes ruin-breathe {
+            0%, 100% { background-color: var(--amber-glow-10); }
+            50% { background-color: rgba(212,168,83, var(--ruin-peak, 0.18)); }
+        }
+        @keyframes sanctuary-breathe {
+            0%, 100% { background-color: rgba(102,102,102,0.10); }
+            50% { background-color: rgba(102,102,102, var(--sanctuary-peak, 0.14)); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .sq.ruin { animation: none; background: var(--amber-glow-10); }
+            .sq.sanctuary { animation: none; background: rgba(102,102,102,0.10); }
         }
         /* Veiled: 45-degree diagonal hatch, per the design system's Veil State Pattern -
            a flat gray fill was a placeholder, not the spec */
         .sq.veiled {
-            background-color: var(--surface-concrete) !important;
+            background-color: var(--black-obsidian) !important;
             background-image: repeating-linear-gradient(
                 45deg,
-                rgba(245, 245, 247, 0.08) 0px,
-                rgba(245, 245, 247, 0.08) 2px,
+                rgba(224,224,224,0.08) 0px,
+                rgba(224,224,224,0.08) 2px,
                 transparent 2px,
                 transparent 10px
             ) !important;
-            color: rgba(245, 245, 247, 0.6) !important;
+            color: rgba(224,224,224,0.6) !important;
         }
 
         /* Accessibility: Screen Reader Only Live Region */
@@ -188,25 +199,24 @@
         input, button, select {
             font-size: 16px;
             padding: 5px;
-            background: var(--surface-concrete);
-            color: var(--text-primary);
-            border: 1px solid var(--surface-concrete);
+            background: var(--black-obsidian);
+            color: var(--white-pure);
+            border: 1px solid var(--black-obsidian);
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
         }
         button, select { cursor: pointer; }
-        button:hover, select:hover { border-color: var(--accent-crimson); }
+        button:hover, select:hover { border-color: var(--amber-light); }
         #legend {
             font-family: var(--font-mono);
             font-size: 13px;
-            color: var(--text-primary);
-            opacity: 0.85;
+            color: var(--text-muted);
             margin: 6px 0 14px 0;
         }
         #legend kbd {
-            background: var(--surface-concrete);
-            border: 1px solid rgba(245, 245, 247, 0.25);
+            background: var(--black-obsidian);
+            border: 1px solid var(--grey-700);
             padding: 1px 6px;
             font-family: inherit;
         }
@@ -214,16 +224,18 @@
            screen readers never see this board (aria-hidden), so this doesn't touch
            or complicate the accessible input path at all. */
         .sq { cursor: pointer; }
-        .sq.selected { box-shadow: inset 0 0 0 3px var(--text-primary); }
+        .sq.selected { box-shadow: inset 0 0 0 1px var(--text-muted); }
         #log {
             white-space: pre-wrap;
-            background: var(--surface-concrete);
-            color: var(--text-primary);
-            padding: 10px;
+            background: var(--black-obsidian);
+            color: var(--grey-200);
+            padding: 14px;
+            border: 1px solid var(--border-hairline);
             border-radius: 0; /* doc rejects rounded/soft treatments in favor of flat structural edges */
             max-height: 200px;
             overflow-y: auto;
             font-family: var(--font-mono); /* Data/Logs typeface per the doc's typography hierarchy */
+            font-size: 13px;
         }
         /* Accessible counterpart to #log: a real, focusable, navigable list (not
            aria-hidden) so screen reader users can review move history item by item,
@@ -235,36 +247,48 @@
             padding-left: 1.4em;
             font-family: var(--font-mono);
             font-size: 13px;
-            line-height: 1.5;
+            line-height: 1.6;
+            color: var(--grey-200);
+        }
+        .history-log:empty::before {
+            content: "No moves yet.\A Click a piece to begin.";
+            white-space: pre;
+            color: var(--text-muted);
+            font-family: var(--font-sans);
+            display: block;
+            text-align: center;
+            padding: 12px 0;
         }
         .history-log li { margin: 2px 0; }
         .panel {
-            background: var(--surface-concrete);
-            border: 1px solid rgba(245, 245, 247, 0.15);
-            padding: 14px 16px;
-            margin: 16px 0;
+            background: transparent;
+            border: 1px solid var(--border-hairline);
+            padding: 20px;
+            margin: 20px 0;
             max-width: 640px;
         }
         .panel h2 {
             font-size: 14px;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            border-left: 2px solid var(--accent-crimson);
+            border-left: 2px solid var(--amber-light);
             padding-left: 8px;
             margin: 0 0 10px 0;
+            font-weight: 400;
         }
         .panel h3 {
             font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: var(--accent-gold);
+            color: var(--amber-light);
             margin: 14px 0 4px 0;
+            font-weight: 400;
         }
         .panel p { font-size: 14px; line-height: 1.5; margin: 4px 0; }
         .support-option {
             padding-top: 12px;
             margin-top: 12px;
-            border-top: 1px solid rgba(245, 245, 247, 0.1);
+            border-top: 1px solid var(--border-hairline);
         }
         .support-option:first-of-type { border-top: none; margin-top: 4px; padding-top: 4px; }
         #rpgactor-status {
@@ -273,8 +297,33 @@
             margin-top: 8px;
         }
         #rpgactor-stats dl { margin: 8px 0 0 0; }
-        #rpgactor-stats dt { color: var(--accent-gold); font-size: 13px; margin-top: 6px; }
+        #rpgactor-stats dt { color: var(--amber-light); font-size: 13px; margin-top: 6px; }
         #rpgactor-stats dd { margin: 0 0 0 0; font-size: 14px; }
+
+        /* Collapsible secondary-content disclosures (Lore / rpg.actor Character
+           Lookup / Ways to Support) — native <details>/<summary>, collapsed by
+           default. Summary styled to match the existing .panel h2 treatment so
+           it reads the same as the rest of the design system. */
+        details.panel { padding: 0; }
+        details.panel > summary {
+            display: block;
+            cursor: pointer;
+            padding: 20px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-left: 2px solid var(--amber-light);
+            font-weight: 400;
+            color: var(--grey-200);
+            list-style: revert;
+        }
+        details.panel > summary:hover { color: var(--amber-light); }
+        details.panel[open] > summary {
+            border-bottom: 1px solid var(--border-hairline);
+        }
+        details.panel > .details-body {
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -283,16 +332,8 @@
     <header class="hero">
         <p class="hero-eyebrow">Veiled Dominion · Duet</p>
         <h1>Duet</h1>
-        <p class="tagline">A standalone, accessibility-first browser demo of Rebirth &amp; Death's Radius of Ruin
-        mechanic — one piece of a bigger 4-player asymmetric chess variant. Built screen-reader-first, playable
-        by anyone, and small enough to read the whole engine in one sitting.</p>
-        <nav class="hero-nav" aria-label="Project links">
-            <a href="https://github.com/ibloud/duet_engine_architecture">About this project ↗</a>
-            <a href="https://github.com/Loptr-Lab/veiled-dominion-engine">Veiled Dominion engine ↗</a>
-            <a href="https://loptrlab.com">Loptr Lab ↗</a>
-        </nav>
         <p class="quickstart" aria-hidden="true">
-            👋 New here? Type <kbd>e2e4</kbd> in the box below and press Enter to make your first move.
+            New here? Type <kbd>e2e4</kbd> in the box below and press Enter to make your first move.
         </p>
     </header>
 
@@ -308,7 +349,7 @@
             <label for="cmd">Command (e.g., e2e4 or e4 to query):</label>
             <input type="text" id="cmd" autocomplete="off" aria-describedby="instructions">
             <button onclick="processCommand()">Execute</button>
-            <button type="button" id="speak-btn" onclick="SpeechInput.toggle()" aria-pressed="false" aria-describedby="speech-instructions">🎤 Speak Move</button>
+            <button type="button" id="speak-btn" onclick="SpeechInput.toggle()" aria-pressed="false" aria-describedby="speech-instructions">Speak Move</button>
         </div>
         <div class="controls-row">
             <button onclick="toggleAudio()" id="audio-btn">Toggle Audio Cue</button>
@@ -330,9 +371,9 @@
         &nbsp;·&nbsp; or click two squares on the board below &nbsp;·&nbsp; or tap Speak Move
     </p>
 
-    <div>
+    <div class="sr-only">
         <h3>Game Log (Visual History)</h3>
-        <div id="log" aria-hidden="true"></div>
+        <div id="log"></div>
     </div>
 
     <!-- Accessible move/event history: unlike #sr-status (which only speaks the latest
@@ -346,74 +387,83 @@
 
     <!-- Lore panel - plain readable text, intentionally NOT aria-hidden since this content
          is meaningful to blind players too, unlike the visual board. Placed below the game
-         itself so the board/controls are the first thing encountered. -->
-    <section class="panel" aria-labelledby="lore-heading">
-        <h2 id="lore-heading">Lore</h2>
-        <h3>Rebirth</h3>
-        <p>She was made too bright. Formed by Death after a broken law in Heaven, Rebirth carries a power she hasn't
-        learned to carry safely — anything that lingers too close to her, ally or enemy, gets stripped down to its
-        most basic capability. She isn't cruel. She's simply more than the board was built to hold.</p>
-        <h3>Death</h3>
-        <p>Her mentor, and the only stable ground near her. He cannot be captured, cannot be pushed aside, and
-        anything standing close enough to him is shielded from her aura entirely. Not a guardian standing over a
-        weapon — a teacher, still midway through the lesson.</p>
-        <h3>The Radius of Ruin &amp; Sanctuary</h3>
-        <p>Rebirth's presence Veils any piece that ends a turn too close to her — reduced to pawn-like movement for
-        a round. Death's Sanctuary is the one place that effect can't reach.</p>
-    </section>
+         itself so the board/controls are the first thing encountered. Collapsed by default
+         (native <details>) to keep default scroll depth down without dropping any content. -->
+    <details class="panel" aria-labelledby="lore-heading">
+        <summary id="lore-heading">Lore</summary>
+        <div class="details-body">
+            <h3>Rebirth</h3>
+            <p>She was made too bright. Formed by Death after a broken law in Heaven, Rebirth carries a power she hasn't
+            learned to carry safely — anything that lingers too close to her, ally or enemy, gets stripped down to its
+            most basic capability. She isn't cruel. She's simply more than the board was built to hold.</p>
+            <h3>Death</h3>
+            <p>Her mentor, and the only stable ground near her. He cannot be captured, cannot be pushed aside, and
+            anything standing close enough to him is shielded from her aura entirely. Not a guardian standing over a
+            weapon — a teacher, still midway through the lesson.</p>
+            <h3>The Radius of Ruin &amp; Sanctuary</h3>
+            <p>Rebirth's presence Veils any piece that ends a turn too close to her — reduced to pawn-like movement for
+            a round. Death's Sanctuary is the one place that effect can't reach.</p>
+        </div>
+    </details>
 
     <!-- rpg.actor integration - read-only lookup. Unauthenticated GET only; no login, no writes.
          See RPGACTOR_INTEGRATION_NOTES section further down in this file for what Phase 2 (OAuth
-         write-back) would require - deliberately out of scope for this pass. -->
-    <section class="panel" aria-labelledby="rpgactor-heading">
-        <h2 id="rpgactor-heading">rpg.actor Character Lookup</h2>
-        <p>Enter a Bluesky handle to look up any existing rpg.actor stats on record. Read-only - this does not
-        log you in or change anything on your account.</p>
-        <label for="rpgactor-handle">Bluesky handle</label>
-        <input type="text" id="rpgactor-handle" placeholder="e.g. yourname.bsky.social" autocomplete="off">
-        <button onclick="loadRpgActorProfile()">Look Up</button>
-        <p id="rpgactor-status" role="status" aria-live="polite"></p>
-        <div id="rpgactor-stats"></div>
-    </section>
+         write-back) would require - deliberately out of scope for this pass. Collapsed by default,
+         same as Lore and Ways to Support: secondary content, not required to play. -->
+    <details class="panel" aria-labelledby="rpgactor-heading">
+        <summary id="rpgactor-heading">rpg.actor Character Lookup</summary>
+        <div class="details-body">
+            <p>Enter a Bluesky handle to look up any existing rpg.actor stats on record. Read-only - this does not
+            log you in or change anything on your account.</p>
+            <label for="rpgactor-handle">Bluesky handle</label>
+            <input type="text" id="rpgactor-handle" placeholder="e.g. yourname.bsky.social" autocomplete="off">
+            <button onclick="loadRpgActorProfile()">Look Up</button>
+            <p id="rpgactor-status" role="status" aria-live="polite"></p>
+            <div id="rpgactor-stats"></div>
+        </div>
+    </details>
 
     <!-- WAYS TO SUPPORT - additive, entirely optional. Framed as a menu of
          choices rather than a checkout flow: nothing here is required to play
          or read the game, and no single option is presented as the "real" one.
-         Each sub-option is independent - remove/reorder freely. -->
-    <section class="panel" aria-labelledby="support-heading">
-        <h2 id="support-heading">Ways to Support</h2>
-        <p>None of this is required - Duet is free to play and always will be. If you'd like to put something
-        toward Loptr Lab's work on Veiled Dominion, here are a couple of no-pressure options. Pick whichever
-        fits, or none at all.</p>
+         Each sub-option is independent - remove/reorder freely. Collapsed by
+         default, same as Lore and rpg.actor above. -->
+    <details class="panel" aria-labelledby="support-heading">
+        <summary id="support-heading">Ways to Support</summary>
+        <div class="details-body">
+            <p>None of this is required - Duet is free to play and always will be. If you'd like to put something
+            toward Loptr Lab's work on Veiled Dominion, here are a couple of no-pressure options. Pick whichever
+            fits, or none at all.</p>
 
-        <!-- PayPal - always visible, no wallet or extension required. A plain
-             link, not a checkout embed: no SDK script, no dependency, keeps
-             this file's "no build step" pitch intact. See SUPPORT_PAYPAL_URL
-             below - must be set to a real paypal.me link (or similar) before
-             this goes anywhere useful. -->
-        <div class="support-option" aria-labelledby="support-paypal-heading">
-            <h3 id="support-paypal-heading">PayPal</h3>
-            <p>Works for anyone, no crypto wallet needed.</p>
-            <a id="support-paypal-link" href="https://www.paypal.com/paypalme/ibloud" class="btn-primary" style="display:inline-block; text-decoration:none;">Give via PayPal ↗</a>
-        </div>
+            <!-- PayPal - always visible, no wallet or extension required. A plain
+                 link, not a checkout embed: no SDK script, no dependency, keeps
+                 this file's "no build step" pitch intact. See SUPPORT_PAYPAL_URL
+                 below - must be set to a real paypal.me link (or similar) before
+                 this goes anywhere useful. -->
+            <div class="support-option" aria-labelledby="support-paypal-heading">
+                <h3 id="support-paypal-heading">PayPal</h3>
+                <p>Works for anyone, no crypto wallet needed.</p>
+                <a id="support-paypal-link" href="https://www.paypal.com/paypalme/ibloud" class="btn-primary" style="display:inline-block; text-decoration:none;">Give via PayPal ↗</a>
+            </div>
 
-        <!-- Lightning tip jar - via WebLN, additive only. Hidden entirely
-             unless a WebLN-capable wallet (e.g. Alby) is detected in the
-             browser - no wallet, no button, no dead UI. No server, no new
-             dependency: WebLN is a browser API a wallet extension injects,
-             same "no build step" spirit as the rest of this file. See
-             TipJar.LIGHTNING_ADDRESS below - must be set to a real address
-             before this does anything useful. -->
-        <div class="support-option" id="tipjar-panel" aria-labelledby="tipjar-heading" style="display:none;">
-            <h3 id="tipjar-heading">Lightning</h3>
-            <p>A wallet that speaks Lightning was detected in your browser. You can send a few sats
-            directly - no account, no checkout page.</p>
-            <label for="tipjar-amount">Amount (sats)</label>
-            <input type="number" id="tipjar-amount" value="1000" min="1" step="1" inputmode="numeric">
-            <button onclick="TipJar.sendTip()">⚡ Send Tip</button>
-            <p id="tipjar-status" role="status" aria-live="polite"></p>
+            <!-- Lightning tip jar - via WebLN, additive only. Hidden entirely
+                 unless a WebLN-capable wallet (e.g. Alby) is detected in the
+                 browser - no wallet, no button, no dead UI. No server, no new
+                 dependency: WebLN is a browser API a wallet extension injects,
+                 same "no build step" spirit as the rest of this file. See
+                 TipJar.LIGHTNING_ADDRESS below - must be set to a real address
+                 before this does anything useful. -->
+            <div class="support-option" id="tipjar-panel" aria-labelledby="tipjar-heading" style="display:none;">
+                <h3 id="tipjar-heading">Lightning</h3>
+                <p>A wallet that speaks Lightning was detected in your browser. You can send a few sats
+                directly - no account, no checkout page.</p>
+                <label for="tipjar-amount">Amount (sats)</label>
+                <input type="number" id="tipjar-amount" value="1000" min="1" step="1" inputmode="numeric">
+                <button onclick="TipJar.sendTip()">Send Tip</button>
+                <p id="tipjar-status" role="status" aria-live="polite"></p>
+            </div>
         </div>
-    </section>
+    </details>
 
 <script>
     /* ==========================================================================
@@ -1754,7 +1804,7 @@
                 if (btn) {
                     btn.disabled = true;
                     btn.title = 'Speech input is not supported in this browser.';
-                    btn.innerText = '🎤 Speak Move (unavailable)';
+                    btn.innerText = 'Speak Move (unavailable)';
                 }
                 this._setStatus('Speech input is not supported in this browser. Typing and clicking still work as usual.');
                 return;
@@ -1830,7 +1880,7 @@
             const btn = document.getElementById('speak-btn');
             if (!btn) return;
             btn.setAttribute('aria-pressed', listening ? 'true' : 'false');
-            btn.innerText = listening ? '🎤 Listening… (tap to stop)' : '🎤 Speak Move';
+            btn.innerText = listening ? 'Listening… (tap to stop)' : 'Speak Move';
         },
 
         _handleFinalTranscript(rawText) {
@@ -2000,8 +2050,12 @@
     TipJar.init();
 </script>
 
-    <footer style="margin-top: 36px; padding-top: 16px; border-top: 1px solid rgba(245,245,247,0.12); font-size: 13px; opacity: 0.6;">
-        <a href="https://github.com/ibloud/duet_engine_architecture" style="color: var(--text-primary);">Source, license &amp; contributing ↗</a>
+    <footer style="margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--border-hairline); font-size: 13px; opacity: 0.6;">
+        <a href="https://github.com/ibloud/duet_engine_architecture" style="color: var(--grey-200);">Source, license &amp; contributing ↗</a>
+        &nbsp;&middot;&nbsp;
+        <a href="https://github.com/Loptr-Lab/veiled-dominion-engine" style="color: var(--grey-200);">Veiled Dominion engine ↗</a>
+        &nbsp;&middot;&nbsp;
+        <a href="https://loptrlab.com" style="color: var(--grey-200);">Loptr Lab ↗</a>
     </footer>
 
 </div>
