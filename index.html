@@ -261,6 +261,12 @@
             margin: 14px 0 4px 0;
         }
         .panel p { font-size: 14px; line-height: 1.5; margin: 4px 0; }
+        .support-option {
+            padding-top: 12px;
+            margin-top: 12px;
+            border-top: 1px solid rgba(245, 245, 247, 0.1);
+        }
+        .support-option:first-of-type { border-top: none; margin-top: 4px; padding-top: 4px; }
         #rpgactor-status {
             font-family: var(--font-mono);
             font-size: 13px;
@@ -370,20 +376,43 @@
         <div id="rpgactor-stats"></div>
     </section>
 
-    <!-- TIP JAR - Lightning via WebLN, additive only. Hidden entirely unless a
-         WebLN-capable wallet (e.g. Alby) is detected in the browser - no wallet,
-         no button, no dead UI. No server, no new dependency: WebLN is a browser
-         API a wallet extension injects, same "no build step" spirit as the rest
-         of this file. See TipJar.LIGHTNING_ADDRESS below - must be set to a real
-         address before this does anything useful. -->
-    <section class="panel" id="tipjar-panel" aria-labelledby="tipjar-heading" style="display:none;">
-        <h2 id="tipjar-heading">Support the Project</h2>
-        <p>A wallet that speaks Lightning was detected in your browser. If you'd like to tip toward Loptr Lab's
-        work on Veiled Dominion, you can send a few sats directly - no account, no checkout page.</p>
-        <label for="tipjar-amount">Amount (sats)</label>
-        <input type="number" id="tipjar-amount" value="1000" min="1" step="1" inputmode="numeric">
-        <button onclick="TipJar.sendTip()">⚡ Send Tip</button>
-        <p id="tipjar-status" role="status" aria-live="polite"></p>
+    <!-- WAYS TO SUPPORT - additive, entirely optional. Framed as a menu of
+         choices rather than a checkout flow: nothing here is required to play
+         or read the game, and no single option is presented as the "real" one.
+         Each sub-option is independent - remove/reorder freely. -->
+    <section class="panel" aria-labelledby="support-heading">
+        <h2 id="support-heading">Ways to Support</h2>
+        <p>None of this is required - Duet is free to play and always will be. If you'd like to put something
+        toward Loptr Lab's work on Veiled Dominion, here are a couple of no-pressure options. Pick whichever
+        fits, or none at all.</p>
+
+        <!-- PayPal - always visible, no wallet or extension required. A plain
+             link, not a checkout embed: no SDK script, no dependency, keeps
+             this file's "no build step" pitch intact. See SUPPORT_PAYPAL_URL
+             below - must be set to a real paypal.me link (or similar) before
+             this goes anywhere useful. -->
+        <div class="support-option" aria-labelledby="support-paypal-heading">
+            <h3 id="support-paypal-heading">PayPal</h3>
+            <p>Works for anyone, no crypto wallet needed.</p>
+            <a id="support-paypal-link" href="https://www.paypal.com/paypalme/ibloud" class="btn-primary" style="display:inline-block; text-decoration:none;">Give via PayPal ↗</a>
+        </div>
+
+        <!-- Lightning tip jar - via WebLN, additive only. Hidden entirely
+             unless a WebLN-capable wallet (e.g. Alby) is detected in the
+             browser - no wallet, no button, no dead UI. No server, no new
+             dependency: WebLN is a browser API a wallet extension injects,
+             same "no build step" spirit as the rest of this file. See
+             TipJar.LIGHTNING_ADDRESS below - must be set to a real address
+             before this does anything useful. -->
+        <div class="support-option" id="tipjar-panel" aria-labelledby="tipjar-heading" style="display:none;">
+            <h3 id="tipjar-heading">Lightning</h3>
+            <p>A wallet that speaks Lightning was detected in your browser. You can send a few sats
+            directly - no account, no checkout page.</p>
+            <label for="tipjar-amount">Amount (sats)</label>
+            <input type="number" id="tipjar-amount" value="1000" min="1" step="1" inputmode="numeric">
+            <button onclick="TipJar.sendTip()">⚡ Send Tip</button>
+            <p id="tipjar-status" role="status" aria-live="polite"></p>
+        </div>
     </section>
 
 <script>
