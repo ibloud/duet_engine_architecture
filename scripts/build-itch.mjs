@@ -1,0 +1,11 @@
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+const root = process.cwd();
+execFileSync(process.execPath, [path.join(root, "scripts/build.mjs")], { stdio: "inherit" });
+const artifacts = path.join(root, "artifacts");
+fs.mkdirSync(artifacts, { recursive: true });
+const output = path.join(artifacts, "veiled-dominion-duet-itch.zip");
+fs.rmSync(output, { force: true });
+execFileSync("zip", ["-qr", output, "."], { cwd: path.join(root, "dist"), stdio: "inherit" });
+console.log("Built itch artifact");
