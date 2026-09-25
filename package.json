@@ -1,0 +1,12 @@
+{
+  "name": "veiled-dominion-duet",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate-content.mjs",
+    "test": "node tests/smoke.mjs",
+    "build": "node scripts/build.mjs",
+    "build:itch": "node scripts/build-itch.mjs"
+  }
+}
