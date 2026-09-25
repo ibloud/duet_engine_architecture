@@ -1,17 +1,26 @@
 {
   "id": "veiled-dominion-duet",
   "title": "Veiled Dominion: Duet",
-  "status": "early-demo",
+  "status": "architecture-lab-extraction",
+  "lineage": {
+    "originalDuet": "https://pulsr.social/ibloud",
+    "mortis": "https://pulsr.social/mortis",
+    "currentProductionPlaytest": "Duet Hackathon",
+    "architectureLab": "https://github.com/ibloud/duet_engine_architecture",
+    "permanentEngine": "https://github.com/Loptr-Lab/veiled-dominion-engine",
+    "playableDistribution": "https://ibloud.itch.io/veiled-dominion-duet"
+  },
   "playable": {
     "itchUrl": "https://ibloud.itch.io/veiled-dominion-duet",
     "githubPagesUrl": "https://ibloud.github.io/duet_engine_architecture/"
   },
   "source": {
     "repository": "https://github.com/ibloud/duet_engine_architecture",
+    "productionPlaytest": "Duet Hackathon",
     "engineRepository": "https://github.com/Loptr-Lab/veiled-dominion-engine"
   },
   "architecture": {
-    "m1": ["canonical source", "content contract", "runtime smoke test", "reproducible build"],
+    "m1": ["content contract", "runtime smoke test", "reproducible build"],
     "m2": ["playable Rebirth/Death mechanic", "screen-reader command path", "visual board", "audio cue", "AI/spectator extensions"],
     "m3": ["itch artifact", "GitHub Pages artifact", "distribution metadata", "handoff documentation"]
   },
